@@ -1,0 +1,164 @@
+= GateKeeper
+GateKeeper is a Ruby on Rails plugin providing a natural language DSL to set permissions
+on ActiveRecord classes at the Model level. Permissions can be assigned based on the current
+users roles, and/or by their associations to the object in question.
+
+== Basic Samples
+
+	class User < ActiveRecord::Base
+	  belongs_to :boss, :class_name => 'User'
+		has_many :authored_books, :class_name => 'Book', :foreign_key => 'author_id'
+	  has_many :readings, :foreign_key => 'reader_id'
+	  has_many :read_books, :class_name => 'Book', :through => :readings
+		
+	  ##### Permissions #####
+	  crudable_by_admin
+	  createable_by_guest :unless => lambda { |new_user| new_user.username == 'guest' }
+	  readable_by_anyone
+	  updateable_by_self
+	  #######################
+	  
+	  class << self
+	  	#return the current user or instantiate a temporary guest user.
+	  	def current; @current_user ||= User.new(:username => 'guest'); end
+	  end
+	  
+	  #etc...
+	  
+	end	
+
+	class Book < ActiveRecord::Base
+	  belongs_to :author, :class_name => 'User'
+	  has_many :readings
+	  has_many :readers, :through => :readings, :class_name => 'User'
+
+	  ##### Permissions ####
+	  crudable_by_admin
+	  crudable_by_my_author
+	  readable_by_boss_of_my_author
+	  readable_by_my_readers :if => :published?
+	  readable_by_moderator
+	  updateable_by_moderator
+	  ######################
+	  
+	  #etc...
+	  		
+	end
+  
+== Requirements
+
+=== User Class
+GateKeeper expects that you have a User class that provides a +current+ method, and
+that that method returns one object that represents the user currently logged into the site.
+
+Alternatively, you may call GateKeeper.user_class_name=('AlternateClassName') in your
+environment.rb to use a different class, but that class must still define a +current+ class
+method that returns an object that represents the current user. 
+
+=== Role Based Access Control (RBAC)
+See GateKeeper::DefaultUserRoleCheckMethod for information on GateKeeper's default method of checking user roles
+and how to override it with your own. 
+
+== Declaring Permissions
+Permissions are declared in the model class they are associated with. For instance, permissions
+defining what types of users are allowed to create, read, update, and destroy instances of Book
+will be declared in the Book class.
+
+=== Permission Names
+All permission declarations start with one of 5 words; +createable+, +readable+, +updateable+,
++destroyable+, or +crudable+. The permissions provided by the first four should be self
+explanatory and the last (+crudable+) is simply the prior four all wrapped up into one convienent
+name.
+
+=== Prepositions (by vs. as)
+Following the permission name, all declarations contain the preposition \_by_ or \_as_, such as
++creatable_by_+ or +updateable_as_+.
+
+Using \_by_ indicates that what follows will reference a user type or assocation that is allowed to
+perform the stated action on the object in question.
+
+Using \_as_ indicates that what follows will reference an association to another object with it's
+own permissions, and permission to perform the stated action on this object should be judged as if
+it were the one specified by the association. For instance, if a Chapter class declared the
+permission +updateable_as_my_book+, then any user with permission to update the book that a
+particular instance of Chapter belongs to would also have permission to update the chapter itself. 
+
+=== User Roles and Associations
+The final piece of a permission declaration references either an association for
+the object in question, or a user role.
+
+Associations are indicated by *prefixing* the association name with +my_+, such as +my_author+.
+Associations may reference a single object (eg. +my_owner+), or an array of objects
+(eg. +my_parents+). If User.current matches *any* of the objects returned by the association,
+permission to perform the action is granted. 
+
+Without the +my_+ prefix, GateKeeper calls User.current.has_gate_keeper_role?(<role_name>) and
+grants permission if that method returns true.  GateKeeper provides a default has_gate_keeper_role?
+method described in GateKeeper::DefaultUserRoleCheckMethod, which you can override to integrate
+with your own system of checking user's roles if necessary.
+
+=== Association Permission Chaining
+When a permission refrences an association (as opposed to a user role), permissions may be
+chained across multiple classes either with the \_as_ preposition (see above), or with the
+\_of_ spearator.
+
+When using the \_of_ seperator, your chain must meet the following requirements.
+
+* The *first* association in the chain must reference a user or array of users to compare
+  User.current to.
+* The *last* association must be prefixed with +my_+ and be an immediate association of
+  the class the permission is being declared for.
+* Any additional associations between the first and last must be in the proper order for
+  GateKeeper to be able to walk the path backwards from the immediate association (last)
+  to the one that represents a user or users (first). 
+
+For instance, if a Page belongs_to :chapter, and Chapter belongs_to :book, and Book belongs_to
+:author, then you can say that the author has permission to CRUD instances of page, and readers
+of the book may read the page with either...
+
+==== association chaining with the \_of_ seperator
+
+	class Page << ActiveRecord::Base
+	  belongs_to :chapter
+	  crudable_by_author_of_book_of_my_chapter 
+	  readable_by_readers_of_book_of_my_chapter
+	  
+==== association chaining with the \_as_ preposition
+
+	class Page << ActiveRecord::Base
+	  belongs_to :chapter
+	  crudable_as_my_chapter  #<= inherits *both* the crudable and readable
+	                          #   permissions from Book through Chapter.
+	  
+	class Chapter << ActiveRecord::Base
+	  belongs_to :book
+	  crudable_as_my_book
+	
+	class Book << ActiveRecord::Base
+	  belongs_to :author
+	  has_many :readings
+	  has_many :readers, :through => :readings
+	  crudable_by_my_author
+	  readable_by_my_readers
+	  
+Also note that you can combine the \_as_ preposition with the \_of_ seperator in one association
+chain if necessary, such as... +crudable_as_book_of_my_chapter+. 
+
+=== Conditional Arguments
+Any permission declaration may optionally include one of the following arguments.
++if+::      Specifies a symbol, string or proc to call to determine if the association permission
+            should be granted. (eg. :if => :some_method?, or :if => Proc.new {|user| user.brownie_points > 42 }.
+            The method or proc should return or evaluate to a true or false value.
++unless+::  Specifies a symbol, string or proc to call to determine if the association permission
+            should NOT be granted. (eg. :unless => :some_method?, or :unless => Proc.new {|user| user.demerits > 24 }.
+            The method or proc should return or evaluate to a true or false value.
+  
+=== Permission Scoping
+With permission scoping enabled, GateKeeper automatically eliminates records User.current doesn't have
+permission to read from arrays returned by certain ActiveRecord finders, such as find(:all). For more
+about enabling permission scoping, see section title "Permission Scoping" at the bottom of the
+GateKeeper module page.
+
+=== Copyrights
+
+Copyright (c) 2008 Jonathan Garvin [ http://5valleys.com ], released under the MIT license
