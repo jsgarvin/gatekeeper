@@ -33,7 +33,7 @@ module GateKeeper
     #Resets permission checking to previous setting at completion.
     #
     #bypass is an alias for without_permission_checking
-    def bypass; end
+    def bypass(&blk); end
     alias_method :bypass, :without_permission_checking
     
     #Temporarily enables permission checking to execute passed block.
@@ -110,7 +110,7 @@ module GateKeeper
     end
   end
   
-  #GateKeeper class methods are automatically mixed into all ActiveRecord classes.
+  #GateKeeper::ClassMethods are automatically mixed into all ActiveRecord classes.
   module ClassMethods
     
     ##################################
@@ -281,6 +281,7 @@ module GateKeeper
     def meta_eval(&blk); metaclass.instance_eval(&blk); end
   end
   
+  #GateKeeper::InstanceMethods are automatically mixed into all ActiveRecord classes.
   module InstanceMethods
     
     #Setup Callbacks
