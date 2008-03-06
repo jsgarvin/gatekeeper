@@ -34,3 +34,11 @@ task :rcov do
     system("/etc/alternatives/x-www-browser coverage/index.html")
   end
 end
+
+
+namespace :rdoc do
+  Rake::Task["rdoc"].invoke
+  task :publish do
+    `scp -r rdoc/* jsgarvin@rubyforge.org:/var/www/gforge-projects/gatekeeper`
+  end
+end
