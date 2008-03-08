@@ -127,29 +127,6 @@ module GateKeeper
     def createable?; return crudable?; end
     
     ##############################################
-    #          Permissions for Anyone            #
-    # These permissions apply to all visitors to #
-    #  the site, even if they're not logged in.  #
-    ##############################################
-
-    #Sets permissons to allow all site visitors full CRUD access
-    #to all instanaces of base class. This applies even if the
-    #the visitor is not logged in.
-    def crudable_by_anyone; meta_eval { define_method(:crudable?) { true } }; end 
-    
-    #Sets permisson to allow all site visitors to create new instances of base class. 
-    def createable_by_anyone; meta_eval { define_method(:createable?) { true } }; end 
-    
-    #Sets permisson to allow all site visitors to read any instances of base class. 
-    def readable_by_anyone; define_method(:readable?) { true }; end
-    
-    #Sets permisson to allow all site visitors to update any instances of base class. 
-    def updateable_by_anyone; define_method(:updateable?) { true }; end
-    
-    #Sets permisson to allow all site visitors to destroy any instances of base class. 
-    def destroyable_by_anyone; define_method(:destroyable?) { true }; end
-    
-    ##############################################
     # Methods to permit users to RUD themselves. #
     #      Meaningless in non-user classes.      #
     ##############################################
