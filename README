@@ -10,7 +10,7 @@ GateKeeper was built and tested with Rails 2.0.2 and may not be compatible with 
 
 == Installation
 
-	script/plugin install svn://rubyforge.org/var/svn/gatekeeper/trunk
+	script/plugin install http://gatekeeper.rubyforge.org/svn/trunk
 
 == Basic Samples
 
