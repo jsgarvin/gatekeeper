@@ -22,6 +22,6 @@ class Person < ActiveRecord::Base
   
   def is_admin?; username == 'administrator'; end
   def is_guest?; self.username == 'guest'; end
-  
+  def is_anyone?; true; end
   
 end
