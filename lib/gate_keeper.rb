@@ -376,7 +376,7 @@ module GateKeeper
     #if the following isn't appropriate for your purposes.
     #
     #==== is_<role_name>?
-    #+has_gate_keeper_role?+ first looks for an instance method in the form of 'is_<role_name>?',
+    #has_gate_keeper_role? first looks for an instance method in the form of 'is_<role_name>?',
     #(eg. 'is_moderator?') and checks if it returns true on the current user. 
     #Otherwise, it will fall through to roles association check.
     #

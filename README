@@ -1,7 +1,10 @@
 = GateKeeper
-GateKeeper is a Ruby on Rails plugin providing a natural language DSL to set permissions
-on ActiveRecord classes at the Model level. Permissions can be assigned based on the current
-users roles, and/or by their associations to the object in question.
+GateKeeper is a Ruby on Rails plugin providing a natural language DSL to manage security 
+permissions on instances of ActiveRecord classes <b>at the Model level</b>. Permissions
+may be assigned based on the current users roles, and/or by their associations to the
+object in question. GateKeeper automatically intercepts all attempts to CRUD (Create,
+Read, Update & Destroy) instances of ActiveRecord classes and verifies the current user
+has permission before allowing the operation to proceed.
 
 GateKeeper was built and tested with Rails 2.0.2 and may not be compatible with versions prior to that.
 
