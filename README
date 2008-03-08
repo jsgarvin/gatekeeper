@@ -3,6 +3,8 @@ GateKeeper is a Ruby on Rails plugin providing a natural language DSL to set per
 on ActiveRecord classes at the Model level. Permissions can be assigned based on the current
 users roles, and/or by their associations to the object in question.
 
+GateKeeper was built and tested with Rails 2.0.2 and may not be compatible with versions prior to that.
+
 == Installation
 
 	script/plugin install svn://rubyforge.org/var/svn/gatekeeper/trunk
