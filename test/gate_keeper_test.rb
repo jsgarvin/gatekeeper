@@ -34,6 +34,12 @@ class GateKeeperTest < Test::Unit::TestCase
   def amy; @amy; end
   def find_arthurs_book; Notebook.find(@arthurs_book.id); end
   def find_amys_book; Notebook.find(@amys_book.id); end
+  def find_arthurs_book_with_eager_loading
+    Notebook.find(:first,
+      :conditions => ['notebooks.id = ?',@arthurs_book.id],
+      :include => {:pages => [:margin_notes, :coffee_stains] }
+    )
+  end
     
   def test_user_permissions
     #### Login as Guest ###
@@ -144,13 +150,13 @@ class GateKeeperTest < Test::Unit::TestCase
     assert_equal(pre_book_count-1,Notebook.count())
   end
   
-  def test_scribble_permissions
+  def test_update_permissions
     #### Login as Arthur ####
     Person.current = arthur
     
-    # Arthur can add Amy as a scribbler to his book
-    find_arthurs_book.scribblers << amy
-    assert(find_arthurs_book.scribblers.include?(amy))
+    # Arthur can add Amy as an updater to his book
+    find_arthurs_book.updaters << amy
+    assert(find_arthurs_book.updaters.include?(amy))
     
     # Arthur can not see Amy's book
     assert_raise(GateKeeper::PermissionError) { find_amys_book }
@@ -161,12 +167,12 @@ class GateKeeperTest < Test::Unit::TestCase
     #As a scribbler, Amy can read Arthur's book
     assert_equal("Arthur's Book",find_arthurs_book.title)
     
-    #As a scribbler, Amy can update Arthur's book
+    #As an updater, Amy can update Arthur's book
     assert(find_arthurs_book.update_attributes(:title => "Amy's Stolen Book"))
     assert_equal("Amy's Stolen Book",find_arthurs_book.reload.title)
     
-    #Amy can remove herself as a scribbler
-    assert(find_arthurs_book.scribblers.delete(amy))
+    #Amy can remove herself as an updater
+    assert(find_arthurs_book.updaters.delete(amy))
     
     #Amy can find all books, scoped to just those she's allowed to read.
     scoped_books = GateKeeper.with_permission_scoping { Notebook.find(:all) }
@@ -188,8 +194,8 @@ class GateKeeperTest < Test::Unit::TestCase
     #Arthur can add pages to his book
     assert(find_arthurs_book.pages.create(:number => 2))
     
-    # Arthur adds Amy as a scribbler to his book
-    find_arthurs_book.scribblers << amy
+    # Arthur adds Amy as a updater to his book
+    find_arthurs_book.updaters << amy
     
     #### Login as Amy ####
     Person.current = amy
@@ -204,7 +210,7 @@ class GateKeeperTest < Test::Unit::TestCase
     assert_equal(42,find_arthurs_book.pages.first.number)
     
     #Amy can remove herself as a scribbler
-    assert(find_arthurs_book.scribblers.delete(amy))
+    assert(find_arthurs_book.updaters.delete(amy))
     
     #No longer a scribbler, now Amy can not find pages in Arthur's Book
     page_id = GateKeeper.bypass { @arthurs_book.pages.first.id }
@@ -230,8 +236,8 @@ class GateKeeperTest < Test::Unit::TestCase
     assert(find_arthurs_book.pages.first.words.first.destroy)
     assert_equal(pre_word_count-1,Word.count())
     
-    # Arthur adds Amy as a scribbler to his book
-    find_arthurs_book.scribblers << amy
+    # Arthur adds Amy as a updater to his book
+    find_arthurs_book.updaters << amy
     
     #### Login as Amy ####
     Person.current = amy
@@ -256,14 +262,51 @@ class GateKeeperTest < Test::Unit::TestCase
     extra = find_arthurs_book.pages.first.words.create(:text => 'Extra')
     extra.reload #reset associations and force reload of associations after Amy unscribbles herself
     
-    #Amy removes herself as a scribbler
-    assert(find_arthurs_book.scribblers.delete(amy))
+    #Amy removes herself as an updater
+    assert(find_arthurs_book.updaters.delete(amy))
     
     #Amy can not CRUD words on Arhtur's Book
     assert_raise(GateKeeper::PermissionError) { page.words.create(:text => 'Denied') }
     assert_raise(GateKeeper::PermissionError) { Word.find(extra.id) }
     assert_raise(GateKeeper::PermissionError) { extra.update_attributes(:text => 'DeniedAgain') }
     assert_raise(GateKeeper::PermissionError) { extra.destroy }
+  end
+  
+  def test_with_eager_loading
+    #### Login as Arthur ####
+    Person.current = arthur
+    
+    #Arthur can add words to pages to his book
+    assert(find_arthurs_book.pages.first.words.create(:text => 'Hello'))
+    
+    #Arthur can add margin_notes to pages to his book
+    assert(find_arthurs_book.pages.first.margin_notes.create(:content => 'Scratch'))
+    
+    # Arthur adds Amy as a updater to his book
+    find_arthurs_book.updaters << amy
+    
+    #### Login as Amy ####
+    Person.current = amy
+    
+    #Amy can read words on pages in Arthur's book.
+    assert_equal('Hello',find_arthurs_book.pages.first.words.first.text)
+    
+    #Amy can NOT read Arthur's eagerly loaded margin notes.
+    assert_equal([],
+      GateKeeper.with_permission_scoping {
+        find_arthurs_book_with_eager_loading.pages[0].margin_notes
+      }
+    )
+    assert_raise(GateKeeper::PermissionError) { 
+      find_arthurs_book_with_eager_loading
+    }
+    
+    #### Login as Arthur ####
+    Person.current = arthur
+    
+    #Arthur's margin note hasn't been erroneously
+    #deleted from the database by GateKeeper
+    assert_equal('Scratch',find_arthurs_book.pages.first.margin_notes.first.content)
   end
   
   def test_method_missing_superizer
@@ -300,14 +343,24 @@ def setup_db
       t.column :owner_id, :integer
     end
     
-    create_table :scribbles do |t|
-      t.column :scribbler_id, :integer
+    create_table :update_permissions do |t|
+      t.column :updater_id, :integer
       t.column :notebook_id, :integer
     end
     
     create_table :pages do |t|
       t.column :number, :integer
       t.column :notebook_id, :integer
+    end
+    
+    create_table :margin_notes do |t|
+      t.column :content, :string
+      t.column :page_id, :integer
+    end
+    
+    create_table :coffee_stains do |t|
+      t.column :opacity, :integer
+      t.column :page_id, :integer
     end
     
     create_table :words do |t|

@@ -224,9 +224,9 @@ module GateKeeper
     
     def find_with_gate_keeper(*args)
       results = GateKeeper.bypass { find_without_gate_keeper(*args) }
-      if results.respond_to?(:map!)
-        readable_method = GateKeeper.permission_scoping_enabled? ? 'readable?': 'raise_unless_readable'
-        results.delete_if{|x| !x.send(readable_method)}.compact!
+      readable_method = GateKeeper.permission_scoping_enabled? ? 'readable?': 'raise_unless_readable'
+      if results.respond_to?(:delete_if)
+        results.delete_if{|x| !x.send(readable_method)}
       else
         if args.first.is_a?(Symbol)
           return nil unless (results and results.readable?) 
@@ -234,6 +234,14 @@ module GateKeeper
           GateKeeper.raise_permission_error(:read,results) unless (results and results.readable?)
         end
       end
+      
+      includes = nil
+      args.each do |a|
+        if a.is_a?(Hash) and a.keys.include?(:include)
+          includes = a[:include]
+        end
+      end
+      traverse_eagerly_loaded_associations(results,includes,readable_method) if includes
       return results
     end
     
@@ -253,9 +261,28 @@ module GateKeeper
       return result
     end
     
+    #Traverse and check readablility of eagerly loaded associations
+    def traverse_eagerly_loaded_associations(things,includes,readable_method)
+      Array(things).each do |thing|
+        Array([includes]).each do |include|
+          if include.is_a?(Hash)
+            include.keys.each do |key|
+              traverse_eagerly_loaded_associations(thing.send(key),include[key],readable_method)
+            end
+          elsif include.is_a?(Array)
+            include.each {|i| thing.send(i).delete_if {|x| !x.send(readable_method) }}
+          else
+            thing.send(include).delete_if{|x| !x.send(readable_method) }
+          end
+        end
+      end
+    end
+    
     #Borrowed from _why's "Seeing Metaclasses Clearly" : http://www.whytheluckystiff.net/articles/seeingMetaclassesClearly.html
     def metaclass; class << self; self; end; end
     def meta_eval(&blk); metaclass.instance_eval(&blk); end
+      
+    
   end
   
   #GateKeeper::InstanceMethods are automatically mixed into all ActiveRecord classes.
