@@ -38,6 +38,7 @@ end
 
 namespace :rdoc do
   Rake::Task["rdoc"].invoke
+  desc 'Publish Rdocs'
   task :publish do
     `scp -r rdoc/* jsgarvin@rubyforge.org:/var/www/gforge-projects/gatekeeper`
   end
