@@ -33,7 +33,7 @@ module GateKeeper
     #Resets permission checking to previous setting at completion.
     #
     #bypass is an alias for without_permission_checking
-    def bypass(&blk); end
+    def bypass; end
     alias_method :bypass, :without_permission_checking
     
     #Temporarily enables permission checking to execute passed block.
@@ -110,7 +110,7 @@ module GateKeeper
     end
   end
   
-  #GateKeeper::ClassMethods are automatically mixed into all ActiveRecord classes.
+  #GateKeeper class methods are automatically mixed into all ActiveRecord classes.
   module ClassMethods
     
     ##################################
@@ -125,6 +125,29 @@ module GateKeeper
     #Returns true if User.current has permission to create
     #instances of base class.
     def createable?; return crudable?; end
+    
+    ##############################################
+    #          Permissions for Anyone            #
+    # These permissions apply to all visitors to #
+    #  the site, even if they're not logged in.  #
+    ##############################################
+
+    #Sets permissons to allow all site visitors full CRUD access
+    #to all instanaces of base class. This applies even if the
+    #the visitor is not logged in.
+    def crudable_by_anyone; meta_eval { define_method(:crudable?) { true } }; end 
+    
+    #Sets permisson to allow all site visitors to create new instances of base class. 
+    def createable_by_anyone; meta_eval { define_method(:createable?) { true } }; end 
+    
+    #Sets permisson to allow all site visitors to read any instances of base class. 
+    def readable_by_anyone; define_method(:readable?) { true }; end
+    
+    #Sets permisson to allow all site visitors to update any instances of base class. 
+    def updateable_by_anyone; define_method(:updateable?) { true }; end
+    
+    #Sets permisson to allow all site visitors to destroy any instances of base class. 
+    def destroyable_by_anyone; define_method(:destroyable?) { true }; end
     
     ##############################################
     # Methods to permit users to RUD themselves. #
@@ -159,6 +182,9 @@ module GateKeeper
         meta_eval do
           define_method("createable_with_#{method_chain_suffix}?") do
             return true if send("createable_without_#{method_chain_suffix}?")
+            unless GateKeeper.user_class.current.respond_to?('has_gate_keeper_role?')
+              GateKeeper.user_class.send(:include,GateKeeper::DefaultUserRoleCheckMethod) 
+            end
             GateKeeper.user_class.current.has_gate_keeper_role?(suffix)
           end
           alias_method_chain "createable?", method_chain_suffix
@@ -224,9 +250,9 @@ module GateKeeper
     
     def find_with_gate_keeper(*args)
       results = GateKeeper.bypass { find_without_gate_keeper(*args) }
-      readable_method = GateKeeper.permission_scoping_enabled? ? 'readable?': 'raise_unless_readable'
-      if results.respond_to?(:delete_if)
-        results.delete_if{|x| !x.send(readable_method)}
+      if results.respond_to?(:map!)
+        readable_method = GateKeeper.permission_scoping_enabled? ? 'readable?': 'raise_unless_readable'
+        results.delete_if{|x| !x.send(readable_method)}.compact!
       else
         if args.first.is_a?(Symbol)
           return nil unless (results and results.readable?) 
@@ -234,14 +260,6 @@ module GateKeeper
           GateKeeper.raise_permission_error(:read,results) unless (results and results.readable?)
         end
       end
-      
-      includes = nil
-      args.each do |a|
-        if a.is_a?(Hash) and a.keys.include?(:include)
-          includes = a[:include]
-        end
-      end
-      traverse_eagerly_loaded_associations(results,includes,readable_method) if includes
       return results
     end
     
@@ -261,31 +279,11 @@ module GateKeeper
       return result
     end
     
-    #Traverse and check readablility of eagerly loaded associations
-    def traverse_eagerly_loaded_associations(things,includes,readable_method)
-      Array(things).each do |thing|
-        Array([includes]).each do |include|
-          if include.is_a?(Hash)
-            include.keys.each do |key|
-              traverse_eagerly_loaded_associations(thing.send(key),include[key],readable_method)
-            end
-          elsif include.is_a?(Array)
-            include.each {|i| thing.send(i).delete_if {|x| !x.send(readable_method) }}
-          else
-            thing.send(include).delete_if{|x| !x.send(readable_method) }
-          end
-        end
-      end
-    end
-    
     #Borrowed from _why's "Seeing Metaclasses Clearly" : http://www.whytheluckystiff.net/articles/seeingMetaclassesClearly.html
     def metaclass; class << self; self; end; end
     def meta_eval(&blk); metaclass.instance_eval(&blk); end
-      
-    
   end
   
-  #GateKeeper::InstanceMethods are automatically mixed into all ActiveRecord classes.
   module InstanceMethods
     
     #Setup Callbacks
@@ -380,7 +378,7 @@ module GateKeeper
     #if the following isn't appropriate for your purposes.
     #
     #==== is_<role_name>?
-    #has_gate_keeper_role? first looks for an instance method in the form of 'is_<role_name>?',
+    #+has_gate_keeper_role?+ first looks for an instance method in the form of 'is_<role_name>?',
     #(eg. 'is_moderator?') and checks if it returns true on the current user. 
     #Otherwise, it will fall through to roles association check.
     #
