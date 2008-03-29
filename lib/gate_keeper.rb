@@ -275,7 +275,11 @@ module GateKeeper
           elsif include.is_a?(Array)
             include.each {|i| thing.send(i).delete_if {|x| !x.send(readable_method) }}
           else
-            thing.send(include).delete_if{|x| !x.send(readable_method) }
+            if thing.send(include).respond_to?(:delete_if)
+              thing.send(include).delete_if{|x| !x.send(readable_method) }
+            else
+              thing.send(include).send(readable_method)
+            end
           end
         end
       end
