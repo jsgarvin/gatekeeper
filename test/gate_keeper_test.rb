@@ -341,6 +341,7 @@ def setup_db
     create_table :notebooks do |t|
       t.column :title, :string
       t.column :owner_id, :integer
+      t.column :ghost_writer_id, :integer
     end
     
     create_table :update_permissions do |t|

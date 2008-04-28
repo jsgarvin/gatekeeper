@@ -193,9 +193,10 @@ module GateKeeper
           associated = self.send(chain_copy.pop.gsub(/^my_/,''))
           
           #Follow the yellow brick road
+          final_associated = follow_permission_association_chain(associated,chain_copy)
           first_check = case preposition
-            when 'by' : [follow_permission_association_chain(associated,chain_copy)].flatten.include?(GateKeeper.user_class.current)
-            when 'as' : follow_permission_association_chain(associated,chain_copy).send(permit+'?')
+            when 'by' : [final_associated].flatten.include?(GateKeeper.user_class.current)
+            when 'as' : final_associated ? final_associated.send(permit+'?') : false
           end
           return (first_check and process_permission_options?(opts)) 
         end
