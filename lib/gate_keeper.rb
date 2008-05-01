@@ -344,14 +344,14 @@ module GateKeeper
     #has permission to destroy instance of base class.
     def raise_unless_destroyable; raise_unless(:destroy); end
     
+    def raise_unless(method) #:nodoc:
+      self.send("#{method}able?") ? true : GateKeeper.raise_permission_error(method,self)
+    end
+  
     #######
     private
     #######
     
-    def raise_unless(method)
-      self.send("#{method}able?") ? true : GateKeeper.raise_permission_error(method,self)
-    end
-  
     def follow_permission_association_chain(associated,array)
       case array.length
         when 0 : return associated
