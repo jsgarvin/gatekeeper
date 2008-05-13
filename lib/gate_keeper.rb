@@ -26,15 +26,12 @@ module GateKeeper
     #Returns false if permission checking is currently turned off. Defaults to true.
     def enabled?; @enabled = @enabled.nil? ? true : @enabled; end
     
-    #See bypass for details.
-    def without_permission_checking(&blk); wrap_enabling(false,&blk); end
-    
     #Temporarily disables permission checking to execute passed block.
     #Resets permission checking to previous setting at completion.
     #
     #bypass is an alias for without_permission_checking
-    def bypass(&blk); end
-    alias_method :bypass, :without_permission_checking
+    def bypass(&blk); wrap_enabling(false,&blk); end
+    alias_method :without_permission_checking, :bypass
     
     #Temporarily enables permission checking to execute passed block.
     #Resets permission checking to previous setting at completion.
@@ -124,7 +121,8 @@ module GateKeeper
     
     #Returns true if User.current has permission to create
     #instances of base class.
-    def createable?; return crudable?; end
+    def creatable?; return crudable?; end
+    alias_method :createable?, :creatable?
     
     ##############################################
     # Methods to permit users to RUD themselves. #
@@ -139,38 +137,40 @@ module GateKeeper
     
     #When set in the User class, allows users to 
     #update their own records.
-    def updateable_by_self(opts = {}); chain_self_method(:updateable,opts); end
+    def updatable_by_self(opts = {}); chain_self_method(:updatable,opts); end
+    alias_method :updateable_by_self, :updatable_by_self
     
     #When set in the User class, allows users to commit virtual suicide.
     #You probably do NOT want to set this, but it's here anyway.
     def destroyable_by_self; chain_self_method(:destroyable); end
     
     def method_missing( method_sym, *args, &block ) #:nodoc:
-      super unless method_sym.to_s[/^(crudable|createable|readable|updateable|destroyable|)_(by|as)_(.*)/]
+      super unless method_sym.to_s[/^(crudable|create?able|readable|update?able|destroyable|)_(by|as)_(.*)/]
       permission = $1; preposition = $2; suffix = $3
+      permission.gsub!(/eable/,'able')
       opts = args.shift || {}
       association_chain = suffix.split(/_of_/);
       is_not_association = !association_chain.last[/my_/] #check User class instead of object associations
       method_chain_suffix = "#{preposition}_#{suffix}_check"
       
-      if is_not_association and preposition == 'by' and permission[/(crudable|createable)/]
+      if is_not_association and preposition == 'by' and permission[/(crudable|creatable)/]
          
         #Add link to *Class* method chain
         meta_eval do
-          define_method("createable_with_#{method_chain_suffix}?") do
-            return true if send("createable_without_#{method_chain_suffix}?")
+          define_method("creatable_with_#{method_chain_suffix}?") do
+            return true if send("creatable_without_#{method_chain_suffix}?")
             unless GateKeeper.user_class.current.respond_to?('has_gate_keeper_role?')
               GateKeeper.user_class.send(:include,GateKeeper::DefaultUserRoleCheckMethod) 
             end
             GateKeeper.user_class.current.has_gate_keeper_role?(suffix)
           end
-          alias_method_chain "createable?", method_chain_suffix
+          alias_method_chain "creatable?", method_chain_suffix
         end
       
       end
       
       #If we're in a crudable_as_* scenario, chain onto all of the CRUD methods.
-      permits = (preposition == 'as' and permission == 'crudable') ? ['crudable','createable','readable','updateable','destroyable'] : [permission]
+      permits = (preposition == 'as' and permission == 'crudable') ? ['crudable','creatable','readable','updatable','destroyable'] : [permission]
       permits.each do |permit|
         
         #Add link to *Instance* method chain
@@ -298,8 +298,8 @@ module GateKeeper
     
     #Setup Callbacks
     def self.included(base) #:nodoc:
-      base.before_create :raise_unless_createable
-      base.before_update :raise_unless_updateable
+      base.before_create :raise_unless_creatable
+      base.before_update :raise_unless_updatable
       base.before_destroy :raise_unless_destroyable
     end
     
@@ -314,23 +314,26 @@ module GateKeeper
       
     #Returns true if User.current has permission to create
     #new instance of base class. 
-    def createable?; crudable?; end
-    
+    def creatable?; crudable?; end
+    alias_method :createable?, :creatable?
+      
     #Returns true if User.current has read permissions on
     #this instance of base class. 
     def readable?; crudable?; end
     
     #Returns true if User.current has update permissions on
     #this instance of base class. 
-    def updateable?; crudable?; end
-    
+    def updatable?; crudable?; end
+    alias_method :updateable?, :updatable?
+      
     #Returns true if User.current has destroy permissions on
     #this instance of base class. 
     def destroyable?; crudable?; end
     
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to create new instances of base class.
-    def raise_unless_createable; raise_unless(:create); end
+    def raise_unless_creatable; raise_unless(:create); end
+    alias_method :raise_unless_createable, :raise_unless_creatable
     
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to read this instance of base class.
@@ -338,14 +341,15 @@ module GateKeeper
     
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to update this instance of base class.
-    def raise_unless_updateable; raise_unless(:update); end
+    def raise_unless_updatable; raise_unless(:update); end
+    alias_method :raise_unless_updateable, :raise_unless_updatable
     
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to destroy instance of base class.
     def raise_unless_destroyable; raise_unless(:destroy); end
     
     def raise_unless(method) #:nodoc:
-      self.send("#{method}able?") ? true : GateKeeper.raise_permission_error(method,self)
+      self.send("#{method.to_s.gsub(/e$/,'')}able?") ? true : GateKeeper.raise_permission_error(method,self)
     end
   
     #######

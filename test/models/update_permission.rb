@@ -3,6 +3,6 @@ class UpdatePermission < ActiveRecord::Base
   belongs_to :notebook
   
   ## Permissions ##
-  createable_by_owner_of_my_notebook
+  creatable_by_owner_of_my_notebook
   #################
 end

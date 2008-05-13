@@ -11,9 +11,9 @@ class Notebook < ActiveRecord::Base
   crudable_by_admin
   crudable_by_my_owner
   crudable_as_my_ghost_writer #should return nil and allow other permissions to be checked
-  createable_by_my_owner
+  creatable_by_my_owner
   readable_by_my_updaters
-  updateable_by_my_updaters
+  updatable_by_my_updaters
   destroyable_by_my_owner
   #################
   

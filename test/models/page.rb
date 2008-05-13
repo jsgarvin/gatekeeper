@@ -5,8 +5,8 @@ class Page < ActiveRecord::Base
   has_many :coffee_stains
   
   ## Permissions ##
-  createable_by_owner_of_my_notebook
-  updateable_by_updaters_of_my_notebook
+  creatable_by_owner_of_my_notebook
+  updatable_by_updaters_of_my_notebook
   readable_as_my_notebook
   #################
 end

@@ -12,9 +12,9 @@ class Person < ActiveRecord::Base
   
   ##### Permissions #####
   crudable_by_admin
-  createable_by_guest :unless => lambda {|new_user| new_user.is_guest? }
+  creatable_by_guest :unless => lambda {|new_user| new_user.is_guest? }
   readable_by_anyone
-  updateable_by_self :unless => :is_guest?
+  updatable_by_self :unless => :is_guest?
   #######################
   
   class << self

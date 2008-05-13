@@ -22,9 +22,9 @@ GateKeeper was built and tested with Rails 2.0.2 and may not be compatible with 
 		
 	  ##### Permissions #####
 	  crudable_by_admin
-	  createable_by_guest :unless => lambda { |new_user| new_user.username == 'guest' }
+	  creatable_by_guest :unless => lambda { |new_user| new_user.username == 'guest' }
 	  readable_by_anyone
-	  updateable_by_self
+	  updatable_by_self
 	  #######################
 	  
 	  class << self
@@ -47,7 +47,7 @@ GateKeeper was built and tested with Rails 2.0.2 and may not be compatible with 
 	  readable_by_boss_of_my_author
 	  readable_by_my_readers :if => :published?
 	  readable_by_moderator
-	  updateable_by_moderator
+	  updatable_by_moderator
 	  ######################
 	  
 	  #etc...
@@ -65,8 +65,8 @@ environment.rb to use a different class, but that class must still define a +cur
 method that returns an object that represents the current user. 
 
 === Role Based Access Control (RBAC)
-See GateKeeper::DefaultUserRoleCheckMethod for information on GateKeeper's default method of checking user roles
-and how to override it with your own. 
+See GateKeeper::DefaultUserRoleCheckMethod for information on GateKeeper's default method of
+checking user roles and how to override it with your own. 
 
 == Declaring Permissions
 Permissions are declared in the model class they are associated with. For instance, permissions
@@ -74,14 +74,14 @@ defining what types of users are allowed to create, read, update, and destroy in
 will be declared in the Book class.
 
 === Permission Names
-All permission declarations start with one of 5 words; +createable+, +readable+, +updateable+,
+All permission declarations start with one of 5 words; +creatable+, +readable+, +updatable+,
 +destroyable+, or +crudable+. The permissions provided by the first four should be self
 explanatory and the last (+crudable+) is simply the prior four all wrapped up into one convienent
 name.
 
 === Prepositions (by vs. as)
 Following the permission name, all declarations contain the preposition \_by_ or \_as_, such as
-+creatable_by_+ or +updateable_as_+.
++creatable_by_+ or +updatable_as_+.
 
 Using \_by_ indicates that what follows will reference a user type or assocation that is allowed to
 perform the stated action on the object in question.
@@ -89,7 +89,7 @@ perform the stated action on the object in question.
 Using \_as_ indicates that what follows will reference an association to another object with it's
 own permissions, and permission to perform the stated action on this object should be judged as if
 it were the one specified by the association. For instance, if a Chapter class declared the
-permission +updateable_as_my_book+, then any user with permission to update the book that a
+permission +updatable_as_my_book+, then any user with permission to update the book that a
 particular instance of Chapter belongs to would also have permission to update the chapter itself. 
 
 === User Roles and Associations
