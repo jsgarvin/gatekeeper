@@ -267,7 +267,8 @@ module GateKeeper
     
     #Traverse and check readablility of eagerly loaded associations
     def traverse_eagerly_loaded_associations(things,includes,readable_method)
-      Array(things).each do |thing|
+      things = [things] unless things.is_a?(Array) 
+      things.each do |thing|
         Array([includes]).each do |include|
           if include.is_a?(Hash)
             include.keys.each do |key|
