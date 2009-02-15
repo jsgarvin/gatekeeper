@@ -5,10 +5,12 @@ require 'update_permission'
 require 'word'
 require 'margin_note'
 require 'coffee_stain'
+require 'coffee_mug'
 
 class Person < ActiveRecord::Base
   has_many :notebooks, :foreign_key => 'owner_id'
   has_and_belongs_to_many :roles
+  has_one :coffee_mug
   
   ##### Permissions #####
   crudable_by_admin

@@ -22,6 +22,7 @@ class GateKeeperTest < Test::Unit::TestCase
       @amy = Person.create(:username => 'amy')
       @arthurs_book = Notebook.create(:title => "Arthur's Book", :owner => arthur)
       @arthurs_book.pages.create(:number => 1)
+      @arthurs_mug = CoffeeMug.create(:person => arthur)
       @amys_book = Notebook.create(:title => "Amys Book", :owner => amy)
       
     end
@@ -307,6 +308,16 @@ class GateKeeperTest < Test::Unit::TestCase
     #Arthur's margin note hasn't been erroneously
     #deleted from the database by GateKeeper
     assert_equal('Scratch',find_arthurs_book.pages.first.margin_notes.first.content)
+    
+    #### Login as Admin ####
+    Person.current = admin
+    
+    #Load all people with their coffee mugs
+    people = Person.find(:all, :include => :coffee_mug)
+    assert(people.include?(arthur))
+    assert(people.include?(amy))
+    assert_not_nil(arthur.reload.coffee_mug)
+    assert_nil(amy.reload.coffee_mug)
   end
   
   def test_method_missing_superizer
@@ -327,6 +338,10 @@ def setup_db
     create_table :people do |t|
       t.column :username, :string
       t.column :hair_color, :string
+    end
+    
+    create_table :coffee_mugs do |t|
+      t.column :person_id, :integer
     end
     
     create_table :roles do |t|
