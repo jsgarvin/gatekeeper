@@ -316,7 +316,6 @@ module GateKeeper
     #Returns true if User.current has permission to create
     #new instance of base class. 
     def creatable?; crudable?; end
-    alias_method :createable?, :creatable?
       
     #Returns true if User.current has read permissions on
     #this instance of base class. 
@@ -325,7 +324,6 @@ module GateKeeper
     #Returns true if User.current has update permissions on
     #this instance of base class. 
     def updatable?; crudable?; end
-    alias_method :updateable?, :updatable?
       
     #Returns true if User.current has destroy permissions on
     #this instance of base class. 
@@ -334,7 +332,6 @@ module GateKeeper
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to create new instances of base class.
     def raise_unless_creatable; raise_unless(:create); end
-    alias_method :raise_unless_createable, :raise_unless_creatable
     
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to read this instance of base class.
@@ -343,7 +340,6 @@ module GateKeeper
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to update this instance of base class.
     def raise_unless_updatable; raise_unless(:update); end
-    alias_method :raise_unless_updateable, :raise_unless_updatable
     
     #Raise a GateKeeper::PermissionError unless User.current
     #has permission to destroy instance of base class.
