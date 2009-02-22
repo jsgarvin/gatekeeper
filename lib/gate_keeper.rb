@@ -145,9 +145,8 @@ module GateKeeper
     def destroyable_by_self; chain_self_method(:destroyable); end
     
     def method_missing( method_sym, *args, &block ) #:nodoc:
-      super unless method_sym.to_s[/^(crudable|create?able|readable|update?able|destroyable|)_(by|as)_(.*)/]
+      super unless method_sym.to_s[/^(crudable|creatable|readable|updatable|destroyable|)_(by|as)_(.*)/]
       permission = $1; preposition = $2; suffix = $3
-      permission.gsub!(/eable/,'able')
       opts = args.shift || {}
       association_chain = suffix.split(/_of_/);
       is_not_association = !association_chain.last[/my_/] #check User class instead of object associations
