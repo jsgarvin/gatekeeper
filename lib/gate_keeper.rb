@@ -122,7 +122,6 @@ module GateKeeper
     #Returns true if User.current has permission to create
     #instances of base class.
     def creatable?; return crudable?; end
-    alias_method :createable?, :creatable?
     
     ##############################################
     # Methods to permit users to RUD themselves. #
@@ -138,7 +137,6 @@ module GateKeeper
     #When set in the User class, allows users to 
     #update their own records.
     def updatable_by_self(opts = {}); chain_self_method(:updatable,opts); end
-    alias_method :updateable_by_self, :updatable_by_self
     
     #When set in the User class, allows users to commit virtual suicide.
     #You probably do NOT want to set this, but it's here anyway.
@@ -383,7 +381,7 @@ module GateKeeper
     
     #This method is automatically included into your User class. GateKeeper calls this method
     #and passes the name of a role from a declared permission as an argument. For instance, if
-    #a class is #+updateable_by_moderator+, then GateKeeper will be calling 
+    #a class is #+updatable_by_moderator+, then GateKeeper will be calling 
     #has_gate_keeper_role?('moderator') on your User class. Override this method with your own
     #if the following isn't appropriate for your purposes.
     #
